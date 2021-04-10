@@ -10,14 +10,15 @@ part 'timer_state.dart';
 
 class TimerBloc extends Bloc<TimerEvent, TimerState> {
   final Ticker _ticker;
-  static const int _defaultDuration = 60;
+  int _minutes = 0;
+  int _secounds = 0;
 
   StreamSubscription<int> _tickerSubscription;
 
   TimerBloc({@required Ticker ticker})
       : assert(ticker != null),
         _ticker = ticker,
-        super(TimerInitial(_defaultDuration));
+        super(TimerInitial(0));
 
   @override
   Stream<TimerState> mapEventToState(TimerEvent event) async* {
@@ -31,6 +32,10 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
       yield* _mapTimerResumedToState(event);
     } else if (event is TimerResetEvent) {
       yield* _mapTimerResetToState(event);
+    } else if (event is MinutesSetEvent) {
+      yield* _mapMinutesSetToState(event);
+    } else if (event is SecondsSetEvent) {
+      yield* _mapSecondsSetToState(event);
     }
   }
 
@@ -39,11 +44,10 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     _tickerSubscription?.cancel();
     _tickerSubscription = _ticker
         .tick(ticks: start.duration)
-        .listen((duration) => add(TimerTickedEvent(duration: duration)));
+        .listen((duration) => add(TimerTickedEvent(duration)));
 
     yield TimerRunInProgressState(start.duration);
   }
-
 
   Stream<TimerState> _mapTimerTickedToState(TimerTickedEvent ticked) async* {
     if (ticked.duration == 0) {
@@ -54,7 +58,7 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   }
 
   Stream<TimerState> _mapTimerResumedToState(TimerResumedEvent resume) async* {
-    if (state is TimerRunPause) {
+    if (state is TimerRunPauseState) {
       _tickerSubscription?.resume();
       yield TimerRunInProgressState(state.duration);
     }
@@ -63,12 +67,38 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   Stream<TimerState> _mapTimerPausedToState(TimerPausedEvent pause) async* {
     if (state is TimerRunInProgressState) {
       _tickerSubscription?.pause();
-      yield TimerRunPause(state.duration);
+      yield TimerRunPauseState(state.duration);
     }
   }
 
   Stream<TimerState> _mapTimerResetToState(TimerResetEvent resetEvent) async* {
     _tickerSubscription?.cancel();
-    yield TimerInitial(_defaultDuration);
+    _minutes = 0;
+    _secounds = 0;
+    yield TimerInitial(0);
+  }
+
+  Stream<TimerState> _mapMinutesSetToState(
+      MinutesSetEvent minutesSetEvent) async* {
+    if (_isValidTime(minutesSetEvent.minutes, _secounds)) {
+      yield InvalidTimerState(-1);
+    } else {
+      _minutes = minutesSetEvent.minutes;
+      yield TimerInitial(_minutes * 60 + _secounds);
+    }
+  }
+
+  Stream<TimerState> _mapSecondsSetToState(
+      SecondsSetEvent secondsSetEvent) async* {
+    if (_isValidTime(_minutes, secondsSetEvent.seconds)) {
+      yield InvalidTimerState(-1);
+    } else {
+      _secounds = secondsSetEvent.seconds;
+      yield TimerInitial(_minutes * 60 + _secounds);
+    }
+  }
+
+  bool _isValidTime(int minutes, int secounds) {
+    return 3600 < minutes * 60 + secounds;
   }
 }

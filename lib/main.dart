@@ -37,41 +37,88 @@ class Timer extends StatelessWidget {
       appBar: AppBar(title: Text('Flutter Timer')),
       body: Stack(
         children: [
-          Background(),
+          BlocBuilder<TimerBloc, TimerState>(
+            builder: (context, state) => Background(),
+          ),
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
-              Padding(
-                padding: EdgeInsets.symmetric(vertical: 100.0),
-                child: Center(
-                  child: BlocBuilder<TimerBloc, TimerState>(
-                    builder: (context, state) {
-                      final String minutesStr = ((state.duration / 60) % 60)
-                          .floor()
-                          .toString()
-                          .padLeft(2, '0');
-                      final String secondsStr = (state.duration % 60)
-                          .floor()
-                          .toString()
-                          .padLeft(2, '0');
-                      return Text(
-                        '$minutesStr:$secondsStr',
-                        style: Timer.timerTextStyle,
-                      );
-                    },
-                  ),
-                ),
+              BlocBuilder<TimerBloc, TimerState>(
+                builder: (context, state) => AwesomeInput(),
               ),
               BlocBuilder<TimerBloc, TimerState>(
-                buildWhen: (previousState, currentState) =>
-                    currentState.runtimeType != previousState.runtimeType,
                 builder: (context, state) => Actions(),
               ),
             ],
           ),
         ],
       ),
+    );
+  }
+}
+
+class AwesomeInput extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 100.0),
+      child: Center(
+          child: _mapStateToInputType(
+        timerBloc: BlocProvider.of<TimerBloc>(context),
+      )),
+    );
+  }
+
+  Widget _mapStateToInputType({
+    TimerBloc timerBloc,
+  }) {
+    final TimerState currentState = timerBloc.state;
+
+    final String minutesStr =
+        ((currentState.duration / 60) % 60).floor().toString().padLeft(2, '0');
+    final String secondsStr =
+        (currentState.duration % 60).floor().toString().padLeft(2, '0');
+
+    if (currentState is TimerInitial) {
+      return Padding(
+        padding: EdgeInsets.only(left: 100, right: 100),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: TextField(
+                style: Timer.timerTextStyle,
+                textAlign: TextAlign.right,
+                decoration: InputDecoration(
+                  hintText: "Penis",
+                ),
+                onChanged: (value) =>
+                    timerBloc.add(MinutesSetEvent(int.parse(value))),
+              ),
+            ),
+            Text(
+              ":",
+              style: Timer.timerTextStyle,
+            ),
+            Expanded(
+              child: TextField(
+                style: Timer.timerTextStyle,
+                decoration: InputDecoration(
+                  hintText: "Penis",
+                ),
+                onChanged: (value) =>
+                    timerBloc.add(SecondsSetEvent(int.parse(value))),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Text(
+      '$minutesStr:$secondsStr',
+      style: Timer.timerTextStyle,
     );
   }
 }
@@ -100,6 +147,14 @@ class Actions extends StatelessWidget {
         ),
       ];
     }
+    if (currentState is InvalidTimerState) {
+      return [
+        FloatingActionButton(
+          child: Icon(Icons.replay),
+          onPressed: () => timerBloc.add(TimerResetEvent()),
+        ),
+      ];
+    }
     if (currentState is TimerRunInProgressState) {
       return [
         FloatingActionButton(
@@ -112,7 +167,7 @@ class Actions extends StatelessWidget {
         ),
       ];
     }
-    if (currentState is TimerRunPause) {
+    if (currentState is TimerRunPauseState) {
       return [
         FloatingActionButton(
           child: Icon(Icons.play_arrow),
@@ -141,23 +196,8 @@ class Background extends StatelessWidget {
   Widget build(BuildContext context) {
     return WaveWidget(
       config: CustomConfig(
-        gradients: [
-          [
-            Color.fromRGBO(72, 74, 126, 1),
-            Color.fromRGBO(125, 170, 206, 1),
-            Color.fromRGBO(184, 189, 245, 0.7)
-          ],
-          [
-            Color.fromRGBO(72, 74, 126, 1),
-            Color.fromRGBO(125, 170, 206, 1),
-            Color.fromRGBO(172, 182, 219, 0.7)
-          ],
-          [
-            Color.fromRGBO(72, 73, 126, 1),
-            Color.fromRGBO(125, 170, 206, 1),
-            Color.fromRGBO(190, 238, 246, 0.7)
-          ],
-        ],
+        gradients:
+            _mapStateToColors(timerBloc: BlocProvider.of<TimerBloc>(context)),
         durations: [19440, 10800, 6000],
         heightPercentages: [0.03, 0.01, 0.02],
         gradientBegin: Alignment.bottomCenter,
@@ -167,5 +207,36 @@ class Background extends StatelessWidget {
       waveAmplitude: 25,
       backgroundColor: Colors.blue[50],
     );
+  }
+
+  List<List<Color>> _mapStateToColors({
+    TimerBloc timerBloc,
+  }) {
+    if (timerBloc.state is InvalidTimerState) {
+      return [
+        [Colors.red, Color(0xEEF44336)],
+        [Colors.red[800], Color(0x77E57373)],
+        [Colors.purple, Color(0x66FF9800)],
+        [Colors.pink, Color(0x55FFEB3B)]
+      ];
+    }
+
+    return [
+      [
+        Color.fromRGBO(72, 74, 126, 1),
+        Color.fromRGBO(125, 170, 206, 1),
+        Color.fromRGBO(184, 189, 245, 0.7)
+      ],
+      [
+        Color.fromRGBO(72, 74, 126, 1),
+        Color.fromRGBO(125, 170, 206, 1),
+        Color.fromRGBO(172, 182, 219, 0.7)
+      ],
+      [
+        Color.fromRGBO(72, 73, 126, 1),
+        Color.fromRGBO(125, 170, 206, 1),
+        Color.fromRGBO(190, 238, 246, 0.7)
+      ],
+    ];
   }
 }

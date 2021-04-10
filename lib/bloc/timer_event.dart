@@ -33,3 +33,26 @@ class TimerTickedEvent extends TimerEvent {
   @override
   String toString() => "TimerTicked { duration: $duration }";
 }
+
+class MinutesSetEvent extends TimerEvent {
+  final int minutes;
+
+  const MinutesSetEvent(this.minutes);
+
+  @override
+  List<Object> get props => [minutes];
+
+  @override
+  String toString() => "MinutesSetEvent { minutes: $minutes }";
+}
+class SecondsSetEvent extends TimerEvent {
+  final int seconds;
+
+  const SecondsSetEvent(this.seconds);
+
+  @override
+  List<Object> get props => [seconds];
+
+  @override
+  String toString() => "SecondsSetEvent { seconds: $seconds }";
+}
